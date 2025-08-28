@@ -1,0 +1,62 @@
+app:
+  title: "Secure Crawl4AI API"
+  version: "1.0.0"
+  host: "0.0.0.0"
+  port: 11235
+  timeout_keep_alive: 120
+  reload: false  # Disable reload in production
+
+security:
+  enabled: true
+  jwt_enabled: false  # Handled by auth service
+  trusted_hosts: ["*"]  # Traefik handles this
+  cors:
+    enabled: true
+    origins: ["*"]  # Configure based on your needs
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    headers: ["Authorization", "Content-Type", "X-Api-Key"]
+
+crawler:
+  memory_threshold_percent: 90.0
+  max_concurrent_requests: ${MAX_CONCURRENT_CRAWLS:-10}
+  pool:
+    max_pages: 40
+    idle_ttl_sec: 1800
+  timeouts:
+    page_load: 30.0
+    request: 60.0
+    stream_timeout: 300.0
+  browser:
+    headless: true
+    viewport_width: 1920
+    viewport_height: 1080
+    user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    ignore_certificate_errors: false
+    java_script_enabled: true
+    cookies_enabled: true
+    cache_enabled: true
+
+rate_limiting:
+  enabled: false  # Handled by auth service
+  storage_uri: "${REDIS_URL}"
+  default_limit: "100/minute"
+
+logging:
+  level: "${LOG_LEVEL:-INFO}"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "/var/log/crawl4ai/app.log"
+  max_bytes: 10485760
+  backup_count: 5
+
+cache:
+  enabled: true
+  backend: "redis"
+  redis_url: "${REDIS_URL}"
+  ttl_seconds: 3600
+  max_entries: 10000
+
+monitoring:
+  metrics_enabled: true
+  metrics_port: 9090
+  health_check_path: "/health"
+  metrics_path: "/metrics"

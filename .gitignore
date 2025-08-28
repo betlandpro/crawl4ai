@@ -1,0 +1,63 @@
+# Environment files
+.env
+.llm.env
+api_keys.json
+
+# Logs
+*.log
+logs/
+/var/log/
+
+# Python
+*.pyc
+__pycache__/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+temp/
+tmp/
+
+# Cache
+.cache/
+redis-data/
+
+# Certificates (if stored locally)
+*.pem
+*.crt
+*.key
+ssl/
+
+# Backup files
+*.tar.gz
+*.zip
+backups/
+*.rdb
+
+# Test outputs
+test-results/
+coverage/
+.coverage
+
+# Documentation build
+docs/_build/
+site/

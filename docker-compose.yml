@@ -58,11 +58,11 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - MAX_CONCURRENT_CRAWLS=${MAX_CONCURRENT_CRAWLS:-10}
     env_file:
-      - .llm.env
+      - ../files/.llm.env
     volumes:
       - ./config/crawl4ai-config.yml:/app/config.yml:ro
       - ../files/browser-cache:/app/.cache
-      - ../code/.llm.env:/app/.llm.env:ro
+      - ../files/.llm.env:/app/.llm.env:ro
     expose:
       - 11235
     shm_size: 2g

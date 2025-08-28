@@ -62,6 +62,7 @@ services:
     volumes:
       - ./config/crawl4ai-config.yml:/app/config.yml:ro
       - ../files/browser-cache:/app/.cache
+      - ../files/.llm.env:/app/.llm.env:ro
     expose:
       - 11235
     shm_size: 2g

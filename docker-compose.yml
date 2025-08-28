@@ -1,121 +1,45 @@
----
 services:
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD} --maxmemory 256mb --maxmemory-policy allkeys-lru
-    volumes:
-      - redis-data:/data
-    networks:
-      - dokploy-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  auth-service:
-    build:
-      context: ./auth
-      dockerfile: Dockerfile
-    restart: unless-stopped
+  crawl4ai:
+    image: ${IMAGE:-unclecode/crawl4ai:${TAG:-latest}}
     environment:
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
-      - ADMIN_USERNAME=${ADMIN_USERNAME}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - API_KEYS_CONFIG=${API_KEYS_CONFIG}
-      - ENABLE_METRICS=true
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY:-}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - GEMINI_API_TOKEN=${GEMINI_API_TOKEN:-}
+    volumes:
+      - /dev/shm:/dev/shm # Chromium performance
     networks:
-      - dokploy-network
-    depends_on:
-      redis:
-        condition: service_healthy
+      - internal
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://crawl4ai:11235/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.auth-api.rule=Host(`${DOMAIN}`) && PathPrefix(`/auth`)"
-      - "traefik.http.routers.auth-api.entrypoints=websecure"
-      - "traefik.http.routers.auth-api.tls.certResolver=letsencrypt"
-      - "traefik.http.services.auth-api.loadbalancer.server.port=8000"
-      - "traefik.http.routers.auth-api.middlewares=auth-api-stripprefix"
-      - "traefik.http.middlewares.auth-api-stripprefix.stripprefix.prefixes=/auth"
+    user: "appuser"
 
-  crawl4ai:
-    build:
-      context: .
-      dockerfile: Dockerfile.simple
-    restart: unless-stopped
-    environment:
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
-      - AUTH_SERVICE_URL=http://auth-service:8000
-      - ENABLE_AUTH=true
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - MAX_CONCURRENT_CRAWLS=${MAX_CONCURRENT_CRAWLS:-10}
+  nginx:
+    image: nginx:alpine
     volumes:
-      - ./config/crawl4ai-config.yml:/app/config.yml:ro
-      - ../files/browser-cache:/app/.cache
-    expose:
-      - 11235
-    shm_size: 2g
-    deploy:
-      resources:
-        limits:
-          memory: ${MEMORY_LIMIT:-8G}
-          cpus: "${CPU_LIMIT:-4}"
+      - ../files/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../files/nginx/.htpasswd:/etc/nginx/.htpasswd:ro
     networks:
-      - dokploy-network
+      - internal
     depends_on:
-      redis:
+      crawl4ai:
         condition: service_healthy
-      auth-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11235/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    labels:
-      # API endpoints with authentication
-      - "traefik.enable=true"
-      - "traefik.http.routers.crawl4ai-api.rule=Host(`${DOMAIN}`) && (PathPrefix(`/crawl`) || PathPrefix(`/api`) || PathPrefix(`/html`) || PathPrefix(`/screenshot`) || PathPrefix(`/pdf`) || PathPrefix(`/md`) || PathPrefix(`/llm`) || PathPrefix(`/health`) || PathPrefix(`/metrics`))"
-      - "traefik.http.routers.crawl4ai-api.entrypoints=websecure"
-      - "traefik.http.routers.crawl4ai-api.tls.certResolver=letsencrypt"
-      - "traefik.http.routers.crawl4ai-api.middlewares=crawl4ai-auth@docker"
-      - "traefik.http.services.crawl4ai-api.loadbalancer.server.port=11235"
-
-      # Playground with basic auth
-      - "traefik.http.routers.crawl4ai-playground.rule=Host(`${DOMAIN}`) && PathPrefix(`/playground`)"
-      - "traefik.http.routers.crawl4ai-playground.entrypoints=websecure"
-      - "traefik.http.routers.crawl4ai-playground.tls.certResolver=letsencrypt"
-      - "traefik.http.routers.crawl4ai-playground.middlewares=crawl4ai-playground-auth@docker"
-      - "traefik.http.services.crawl4ai-playground.loadbalancer.server.port=11235"
-
-      # Auth middleware for API endpoints
-      - "traefik.http.middlewares.crawl4ai-auth.forwardauth.address=http://auth-service:8000/verify"
-      - "traefik.http.middlewares.crawl4ai-auth.forwardauth.authResponseHeaders=X-User-Id,X-Api-Key-Id,X-Scopes"
-
-      # Basic auth middleware for Playground
-      - "traefik.http.middlewares.crawl4ai-playground-auth.basicauth.users=${PLAYGROUND_AUTH}"
-      - "traefik.http.middlewares.crawl4ai-playground-auth.basicauth.realm=Crawl4AI Playground"
-
-      # Security headers
-      - "traefik.http.middlewares.security-headers.headers.customResponseHeaders.X-Content-Type-Options=nosniff"
-      - "traefik.http.middlewares.security-headers.headers.customResponseHeaders.X-Frame-Options=DENY"
-      - "traefik.http.middlewares.security-headers.headers.customResponseHeaders.X-XSS-Protection=1; mode=block"
-      - "traefik.http.middlewares.security-headers.headers.customResponseHeaders.Strict-Transport-Security=max-age=31536000; includeSubDomains"
-      - "traefik.http.middlewares.security-headers.headers.customResponseHeaders.Content-Security-Policy=default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+    restart: unless-stopped
 
 networks:
-  dokploy-network:
-    external: true
-
-volumes:
-  redis-data:
-    driver: local
+  internal:
+    driver: bridge

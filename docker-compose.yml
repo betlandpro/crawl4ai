@@ -1,5 +1,4 @@
-version: "3.8"
-
+---
 services:
   redis:
     image: redis:7-alpine
@@ -92,22 +91,22 @@ services:
       - "traefik.http.routers.crawl4ai-api.tls.certResolver=letsencrypt"
       - "traefik.http.routers.crawl4ai-api.middlewares=crawl4ai-auth@docker"
       - "traefik.http.services.crawl4ai-api.loadbalancer.server.port=11235"
-      
+
       # Playground with basic auth
       - "traefik.http.routers.crawl4ai-playground.rule=Host(`${DOMAIN}`) && PathPrefix(`/playground`)"
       - "traefik.http.routers.crawl4ai-playground.entrypoints=websecure"
       - "traefik.http.routers.crawl4ai-playground.tls.certResolver=letsencrypt"
       - "traefik.http.routers.crawl4ai-playground.middlewares=crawl4ai-playground-auth@docker"
       - "traefik.http.services.crawl4ai-playground.loadbalancer.server.port=11235"
-      
+
       # Auth middleware for API endpoints
       - "traefik.http.middlewares.crawl4ai-auth.forwardauth.address=http://auth-service:8000/verify"
       - "traefik.http.middlewares.crawl4ai-auth.forwardauth.authResponseHeaders=X-User-Id,X-Api-Key-Id,X-Scopes"
-      
+
       # Basic auth middleware for Playground
       - "traefik.http.middlewares.crawl4ai-playground-auth.basicauth.users=${PLAYGROUND_AUTH}"
       - "traefik.http.middlewares.crawl4ai-playground-auth.basicauth.realm=Crawl4AI Playground"
-      
+
       # Security headers
       - "traefik.http.middlewares.security-headers.headers.customResponseHeaders.X-Content-Type-Options=nosniff"
       - "traefik.http.middlewares.security-headers.headers.customResponseHeaders.X-Frame-Options=DENY"

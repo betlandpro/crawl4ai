@@ -49,7 +49,7 @@ services:
   crawl4ai:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.simple
     restart: unless-stopped
     environment:
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
@@ -57,12 +57,9 @@ services:
       - ENABLE_AUTH=true
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - MAX_CONCURRENT_CRAWLS=${MAX_CONCURRENT_CRAWLS:-10}
-    env_file:
-      - ../files/.llm.env
     volumes:
       - ./config/crawl4ai-config.yml:/app/config.yml:ro
       - ../files/browser-cache:/app/.cache
-      - ../files/.llm.env:/app/.llm.env:ro
     expose:
       - 11235
     shm_size: 2g
